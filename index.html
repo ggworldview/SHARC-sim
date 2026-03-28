@@ -385,6 +385,49 @@
           <canvas id="heatmapChart"></canvas>
         </div>
       </div>
+
+      <!-- All Optimal Scenarios -->
+      <div class="all-scenarios-section" id="all-scenarios-section" style="display:none">
+        <div class="scenarios-header">
+          <div class="scenarios-title-wrap">
+            <h3>📋 所有等值最佳解組合</h3>
+            <span class="scenarios-count-badge" id="scenarios-count-badge">找到 0 個組合</span>
+          </div>
+          <p class="section-desc">以下所有組合的各方淨現值總和均相同，達成最大值。點選任一列即可套用至輸入面板。</p>
+        </div>
+
+        <!-- Sort controls -->
+        <div class="scenarios-controls">
+          <span class="sort-label">排序依據：</span>
+          <button class="sort-btn active" id="sort-lc" onclick="sortScenarios('lc')">LC ↑</button>
+          <button class="sort-btn" id="sort-sc" onclick="sortScenarios('sc')">SC ↑</button>
+          <button class="sort-btn" id="sort-rc" onclick="sortScenarios('rc')">RC ↑</button>
+          <button class="sort-btn" id="sort-rt" onclick="sortScenarios('rt')">RT ↑</button>
+          <span class="scenarios-page-info" id="scenarios-page-info"></span>
+        </div>
+
+        <!-- Table -->
+        <div class="scenarios-table-wrap">
+          <table class="scenarios-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th class="lc-col">LC（大型商業）</th>
+                <th class="sc-col">SC（小型商業）</th>
+                <th class="rc-col">RC（休閒比賽）</th>
+                <th class="rt-col">RT（休閒旅遊）</th>
+                <th>協議總量</th>
+                <th>未來捕撈量</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="scenarios-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="scenarios-pagination" id="scenarios-pagination"></div>
+      </div>
     </div>
 
     <!-- Footer -->

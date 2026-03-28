@@ -403,6 +403,11 @@ function updateCharts(catches, npvs, future) {
 // 步長 50 公噸以確保速度 (可調整)
 // ══════════════════════════════════════════════════════════════
 let optimalSolution = null;
+let allOptimalSolutions = [];   // all tied-best scenarios
+let scenariosSortKey  = 'lc';   // current sort column
+let scenariosSortAsc  = true;
+let scenariosPage     = 0;
+const SCENARIOS_PAGE_SIZE = 25;
 
 function runOptimization() {
   const btn = document.getElementById('btn-optimize');
@@ -417,23 +422,40 @@ function runOptimization() {
     const STEP = 50; // 步長
     let bestTotal = -Infinity;
     let best = null;
+    const candidates = [];
 
     const lcRange = range(GROUPS.lc.min, GROUPS.lc.max, STEP);
     const scRange = range(GROUPS.sc.min, GROUPS.sc.max, STEP);
     const rcRange = range(GROUPS.rc.min, GROUPS.rc.max, STEP);
     const rtRange = range(GROUPS.rt.min, GROUPS.rt.max, STEP);
 
+    // First pass: find global best
     for (const lc of lcRange) {
       for (const sc of scRange) {
         for (const rc of rcRange) {
           for (const rt of rtRange) {
-            // ── 總量限制篩選 ──────────────────────────────
             if (runningInLimitMode && (lc + sc + rc + rt) > TOTAL_LIMIT) continue;
             const catches = { lc, sc, rc, rt };
-            const { total } = calcAll(catches);
-            if (total > bestTotal) {
-              bestTotal = total;
-              best = { catches, ...calcAll(catches) };
+            const result = calcAll(catches);
+            if (result.total > bestTotal) {
+              bestTotal = result.total;
+              best = { catches, ...result };
+            }
+          }
+        }
+      }
+    }
+
+    // Second pass: collect ALL tied solutions (within $1 tolerance)
+    for (const lc of lcRange) {
+      for (const sc of scRange) {
+        for (const rc of rcRange) {
+          for (const rt of rtRange) {
+            if (runningInLimitMode && (lc + sc + rc + rt) > TOTAL_LIMIT) continue;
+            const catches = { lc, sc, rc, rt };
+            const result = calcAll(catches);
+            if (Math.abs(result.total - bestTotal) < 1) {
+              candidates.push({ catches, ...result });
             }
           }
         }
@@ -441,6 +463,7 @@ function runOptimization() {
     }
 
     optimalSolution = best;
+    allOptimalSolutions = candidates;
     displayOptimization(best, runningInLimitMode);
 
     btn.textContent = '⚡ 尋找最佳解';
@@ -507,6 +530,128 @@ function displayOptimization(sol, wasLimitMode) {
 
   buildOptCompareChart(sol);
   buildHeatmap(sol);
+
+  // Render all-scenarios table
+  scenariosSortKey = 'lc';
+  scenariosSortAsc = true;
+  scenariosPage = 0;
+  renderScenariosTable();
+}
+
+// ── 所有最佳解組合：渲染分頁表格 ────────────────────────────────
+function renderScenariosTable() {
+  if (!allOptimalSolutions.length) return;
+
+  const sec = document.getElementById('all-scenarios-section');
+  sec.style.display = 'block';
+
+  // Sort
+  const sorted = [...allOptimalSolutions].sort((a, b) => {
+    const va = a.catches[scenariosSortKey];
+    const vb = b.catches[scenariosSortKey];
+    return scenariosSortAsc ? va - vb : vb - va;
+  });
+
+  const total = sorted.length;
+  const totalPages = Math.ceil(total / SCENARIOS_PAGE_SIZE);
+  const start = scenariosPage * SCENARIOS_PAGE_SIZE;
+  const page  = sorted.slice(start, start + SCENARIOS_PAGE_SIZE);
+
+  // Update badge & page info
+  document.getElementById('scenarios-count-badge').textContent =
+    `找到 ${total.toLocaleString('zh-TW')} 個等值最佳解組合`;
+  document.getElementById('scenarios-page-info').textContent =
+    `第 ${scenariosPage + 1} / ${totalPages} 頁`;
+
+  // Render table rows
+  const tbody = document.getElementById('scenarios-tbody');
+  tbody.innerHTML = page.map((sol, i) => {
+    const globalIdx = start + i;
+    const tc = sol.catches.lc + sol.catches.sc + sol.catches.rc + sol.catches.rt;
+    return `<tr onclick="applyScenario(${globalIdx})">
+      <td>${globalIdx + 1}</td>
+      <td class="lc-val">${sol.catches.lc.toLocaleString('zh-TW')}</td>
+      <td class="sc-val">${sol.catches.sc.toLocaleString('zh-TW')}</td>
+      <td class="rc-val">${sol.catches.rc.toLocaleString('zh-TW')}</td>
+      <td class="rt-val">${sol.catches.rt.toLocaleString('zh-TW')}</td>
+      <td class="total-val">${tc.toLocaleString('zh-TW')}</td>
+      <td class="future-val">${sol.future.toLocaleString('zh-TW')}</td>
+      <td><button class="apply-row-btn" onclick="event.stopPropagation();applyScenario(${globalIdx})">套用</button></td>
+    </tr>`;
+  }).join('');
+
+  // Pagination buttons
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const container = document.getElementById('scenarios-pagination');
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+  const cur = scenariosPage;
+  let html = '';
+
+  // Prev
+  html += `<button class="page-btn" onclick="goToPage(${cur - 1})" ${cur === 0 ? 'disabled' : ''}>‹ 上一頁</button>`;
+
+  // Page numbers (compact: first, last, ±2 around current)
+  const pages = new Set([0, totalPages - 1]);
+  for (let p = Math.max(0, cur - 2); p <= Math.min(totalPages - 1, cur + 2); p++) pages.add(p);
+  const sorted = [...pages].sort((a, b) => a - b);
+  let prev = -1;
+  for (const p of sorted) {
+    if (p - prev > 1) html += `<span class="page-ellipsis">…</span>`;
+    html += `<button class="page-btn ${p === cur ? 'active' : ''}" onclick="goToPage(${p})">${p + 1}</button>`;
+    prev = p;
+  }
+
+  // Next
+  html += `<button class="page-btn" onclick="goToPage(${cur + 1})" ${cur >= totalPages - 1 ? 'disabled' : ''}>下一頁 ›</button>`;
+  container.innerHTML = html;
+}
+
+function goToPage(p) {
+  const totalPages = Math.ceil(allOptimalSolutions.length / SCENARIOS_PAGE_SIZE);
+  scenariosPage = Math.max(0, Math.min(totalPages - 1, p));
+  renderScenariosTable();
+  document.getElementById('all-scenarios-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function sortScenarios(key) {
+  if (scenariosSortKey === key) {
+    scenariosSortAsc = !scenariosSortAsc; // toggle direction
+  } else {
+    scenariosSortKey = key;
+    scenariosSortAsc = true;
+  }
+  scenariosPage = 0;
+
+  // Update sort button label with arrow direction
+  ['lc','sc','rc','rt'].forEach(k => {
+    const btn = document.getElementById(`sort-${k}`);
+    btn.classList.toggle('active', k === scenariosSortKey);
+    btn.textContent = k.toUpperCase() + (k === scenariosSortKey ? (scenariosSortAsc ? ' ↑' : ' ↓') : ' ↑');
+  });
+  renderScenariosTable();
+}
+
+// Apply a specific scenario from allOptimalSolutions
+function applyScenario(idx) {
+  const sorted = [...allOptimalSolutions].sort((a, b) => {
+    const va = a.catches[scenariosSortKey];
+    const vb = b.catches[scenariosSortKey];
+    return scenariosSortAsc ? va - vb : vb - va;
+  });
+  const sol = sorted[idx];
+  if (!sol) return;
+  for (const key of ['lc', 'sc', 'rc', 'rt']) {
+    const val = sol.catches[key];
+    document.getElementById(`${key}-catch`).value  = val;
+    document.getElementById(`${key}-slider`).value = val;
+    updateSliderBackground(document.getElementById(`${key}-slider`), GROUPS[key].color);
+  }
+  updateUI();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function buildOptCompareChart(sol) {
