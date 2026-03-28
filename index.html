@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHARC 鯊魚捕撈資源保護 — 淨現值最佳化模擬系統</title>
+  <meta name="description" content="SHARC 多方談判模擬系統，計算四個漁業協會的淨現值並尋找最佳解" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Background decorative elements -->
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="header-icon">🦈</div>
+        <div class="header-text">
+          <h1>SHARC 淨現值最佳化模擬系統</h1>
+          <p>鯊魚捕撈及資源保護多方談判分析平台</p>
+        </div>
+        <div class="header-badge">
+          <span class="badge-dot"></span>
+          即時計算
+        </div>
+      </div>
+    </header>
+
+    <!-- Global Status Bar -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-label">目標總量</span>
+        <span class="status-value target">2,500 公噸</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">目前總量</span>
+        <span class="status-value current">5,000 公噸</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">協議總捕撈量</span>
+        <span class="status-value" id="total-catch-display">— 公噸</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">未來捕撈量</span>
+        <span class="status-value highlight" id="future-catch-display">— 公噸</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">各方淨現值總和</span>
+        <span class="status-value highlight" id="total-npv-display">—</span>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+
+      <!-- Left: Input Panel -->
+      <section class="panel input-panel">
+        <div class="panel-header">
+          <h2>📊 明年捕撈量設定</h2>
+          <p>調整各協會明年捕撈量，即時查看淨現值</p>
+        </div>
+
+        <!-- LC Card -->
+        <div class="group-card lc-card" id="card-lc">
+          <div class="card-header">
+            <div class="card-icon lc-icon">LC</div>
+            <div class="card-title">
+              <h3>大型商業漁民協會</h3>
+              <span class="card-subtitle">Large Commercial Fishers</span>
+            </div>
+            <div class="card-coeff">
+              <span class="coeff-label">未來依賴係數</span>
+              <span class="coeff-value">0.10</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label for="lc-catch">明年捕撈量 (公噸)</label>
+                <div class="slider-container">
+                  <input type="range" id="lc-slider" min="400" max="2000" value="2000" step="10" class="slider lc-slider" />
+                  <div class="slider-labels">
+                    <span>400</span>
+                    <span>2,000</span>
+                  </div>
+                </div>
+                <div class="number-input-wrap">
+                  <input type="number" id="lc-catch" min="400" max="2000" value="2000" class="number-input" />
+                  <span class="unit">公噸</span>
+                </div>
+              </div>
+              <div class="npv-display">
+                <span class="npv-label">淨現值 (NPV)</span>
+                <span class="npv-value lc-color" id="lc-npv">$0</span>
+              </div>
+            </div>
+            <div class="constraint-bar">
+              <div class="constraint-info">
+                <span class="constraint-tag">上限: 2,000 公噸</span>
+                <span class="constraint-tag">下限: 400 公噸 (20%)</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-bar lc-progress" id="lc-progress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SC Card -->
+        <div class="group-card sc-card" id="card-sc">
+          <div class="card-header">
+            <div class="card-icon sc-icon">SC</div>
+            <div class="card-title">
+              <h3>小型商業漁民協會</h3>
+              <span class="card-subtitle">Small Commercial Fishers</span>
+            </div>
+            <div class="card-coeff">
+              <span class="coeff-label">未來依賴係數</span>
+              <span class="coeff-value">0.25</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label for="sc-catch">明年捕撈量 (公噸)</label>
+                <div class="slider-container">
+                  <input type="range" id="sc-slider" min="300" max="1500" value="1500" step="10" class="slider sc-slider" />
+                  <div class="slider-labels">
+                    <span>300</span>
+                    <span>1,500</span>
+                  </div>
+                </div>
+                <div class="number-input-wrap">
+                  <input type="number" id="sc-catch" min="300" max="1500" value="1500" class="number-input" />
+                  <span class="unit">公噸</span>
+                </div>
+              </div>
+              <div class="npv-display">
+                <span class="npv-label">淨現值 (NPV)</span>
+                <span class="npv-value sc-color" id="sc-npv">$0</span>
+              </div>
+            </div>
+            <div class="constraint-bar">
+              <div class="constraint-info">
+                <span class="constraint-tag">上限: 1,500 公噸</span>
+                <span class="constraint-tag">下限: 300 公噸 (20%)</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-bar sc-progress" id="sc-progress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RC Card -->
+        <div class="group-card rc-card" id="card-rc">
+          <div class="card-header">
+            <div class="card-icon rc-icon">RC</div>
+            <div class="card-title">
+              <h3>休閒比賽漁民協會</h3>
+              <span class="card-subtitle">Recreational Competition Fishers</span>
+            </div>
+            <div class="card-coeff">
+              <span class="coeff-label">未來依賴係數</span>
+              <span class="coeff-value">0.70</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label for="rc-catch">明年捕撈量 (公噸)</label>
+                <div class="slider-container">
+                  <input type="range" id="rc-slider" min="200" max="1000" value="1000" step="10" class="slider rc-slider" />
+                  <div class="slider-labels">
+                    <span>200</span>
+                    <span>1,000</span>
+                  </div>
+                </div>
+                <div class="number-input-wrap">
+                  <input type="number" id="rc-catch" min="200" max="1000" value="1000" class="number-input" />
+                  <span class="unit">公噸</span>
+                </div>
+              </div>
+              <div class="npv-display">
+                <span class="npv-label">淨現值 (NPV)</span>
+                <span class="npv-value rc-color" id="rc-npv">$0</span>
+              </div>
+            </div>
+            <div class="constraint-bar">
+              <div class="constraint-info">
+                <span class="constraint-tag">上限: 1,000 公噸</span>
+                <span class="constraint-tag">下限: 200 公噸 (20%)</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-bar rc-progress" id="rc-progress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RT Card -->
+        <div class="group-card rt-card" id="card-rt">
+          <div class="card-header">
+            <div class="card-icon rt-icon">RT</div>
+            <div class="card-title">
+              <h3>休閒旅遊漁民協會</h3>
+              <span class="card-subtitle">Recreational Tourism Fishers</span>
+            </div>
+            <div class="card-coeff">
+              <span class="coeff-label">未來依賴係數</span>
+              <span class="coeff-value">0.85</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="input-row">
+              <div class="input-group">
+                <label for="rt-catch">明年捕撈量 (公噸)</label>
+                <div class="slider-container">
+                  <input type="range" id="rt-slider" min="100" max="500" value="500" step="10" class="slider rt-slider" />
+                  <div class="slider-labels">
+                    <span>100</span>
+                    <span>500</span>
+                  </div>
+                </div>
+                <div class="number-input-wrap">
+                  <input type="number" id="rt-catch" min="100" max="500" value="500" class="number-input" />
+                  <span class="unit">公噸</span>
+                </div>
+              </div>
+              <div class="npv-display">
+                <span class="npv-label">淨現值 (NPV)</span>
+                <span class="npv-value rt-color" id="rt-npv">$0</span>
+              </div>
+            </div>
+            <div class="constraint-bar">
+              <div class="constraint-info">
+                <span class="constraint-tag">上限: 500 公噸</span>
+                <span class="constraint-tag">下限: 100 公噸 (20%)</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-bar rt-progress" id="rt-progress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <button class="action-btn secondary" id="btn-reset" onclick="resetToDefault()">🔄 重置為現況</button>
+          <button class="action-btn primary" id="btn-optimize" onclick="runOptimization()">⚡ 尋找最佳解</button>
+        </div>
+      </section>
+
+      <!-- Right: Results & Charts -->
+      <section class="panel results-panel">
+
+        <!-- NPV Summary Cards -->
+        <div class="summary-section">
+          <h2 class="section-title">💰 淨現值結果摘要</h2>
+          <div class="summary-grid">
+            <div class="summary-card lc-summary">
+              <div class="summary-abbr">LC</div>
+              <div class="summary-name">大型商業</div>
+              <div class="summary-npv lc-color" id="sum-lc-npv">—</div>
+              <div class="summary-catch" id="sum-lc-catch">— 公噸</div>
+            </div>
+            <div class="summary-card sc-summary">
+              <div class="summary-abbr">SC</div>
+              <div class="summary-name">小型商業</div>
+              <div class="summary-npv sc-color" id="sum-sc-npv">—</div>
+              <div class="summary-catch" id="sum-sc-catch">— 公噸</div>
+            </div>
+            <div class="summary-card rc-summary">
+              <div class="summary-abbr">RC</div>
+              <div class="summary-name">休閒比賽</div>
+              <div class="summary-npv rc-color" id="sum-rc-npv">—</div>
+              <div class="summary-catch" id="sum-rc-catch">— 公噸</div>
+            </div>
+            <div class="summary-card rt-summary">
+              <div class="summary-abbr">RT</div>
+              <div class="summary-name">休閒旅遊</div>
+              <div class="summary-npv rt-color" id="sum-rt-npv">—</div>
+              <div class="summary-catch" id="sum-rt-catch">— 公噸</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NPV Bar Chart -->
+        <div class="chart-section">
+          <h2 class="section-title">📈 各協會淨現值比較</h2>
+          <div class="chart-wrap">
+            <canvas id="npvBarChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Catch Allocation -->
+        <div class="chart-section">
+          <h2 class="section-title">🎯 捕撈量分配圖</h2>
+          <div class="chart-dual">
+            <div class="chart-wrap chart-half">
+              <div class="chart-sub-label">目前分配</div>
+              <canvas id="catchCurrentPie"></canvas>
+            </div>
+            <div class="chart-wrap chart-half">
+              <div class="chart-sub-label">明年規劃分配</div>
+              <canvas id="catchNewPie"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sensitivity: Future Catch Impact -->
+        <div class="chart-section">
+          <h2 class="section-title">🔬 未來捕撈量對淨現值的影響</h2>
+          <p class="section-desc">顯示在不同未來捕撈量情境下，各協會的淨現值變化趨勢</p>
+          <div class="chart-wrap chart-tall">
+            <canvas id="sensitivityChart"></canvas>
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+    <!-- Optimization Panel -->
+    <div class="optimization-section" id="optimization-section" style="display:none;">
+      <div class="opt-header">
+        <h2>⚡ 最佳化模擬結果</h2>
+        <p>系統已透過窮舉法，在所有合法區間搜尋最大化各方淨現值總和的組合</p>
+      </div>
+      <div class="opt-grid">
+        <div class="opt-result-panel">
+          <h3>🏆 最佳解方案</h3>
+          <div class="opt-results" id="opt-results-content">
+            <!-- filled by JS -->
+          </div>
+          <button class="action-btn primary apply-btn" onclick="applyOptimalSolution()">✅ 套用最佳解到輸入面板</button>
+        </div>
+        <div class="opt-chart-panel">
+          <h3>📊 最佳解 vs 現況比較</h3>
+          <div class="chart-wrap">
+            <canvas id="optCompareChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pareto Front Heatmap -->
+      <div class="pareto-section">
+        <h3>🗺️ LC vs SC 捕撈量組合的淨現值熱圖（RC、RT 固定為最佳解）</h3>
+        <p class="section-desc">顏色越亮代表總淨現值越高</p>
+        <div class="heatmap-scroll">
+          <canvas id="heatmapChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>SHARC 淨現值最佳化模擬系統 © 2025 ｜ 基於個案研究參數構建 ｜ 僅供談判教學與分析用途</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
