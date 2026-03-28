@@ -61,6 +61,30 @@
       </div>
     </div>
 
+    <!-- ── Mode Toggle Strip ── -->
+    <div class="mode-strip">
+      <span class="mode-strip-label">模擬模式：</span>
+      <button class="mode-toggle-btn" id="btn-mode-toggle" onclick="toggleLimitMode()">
+        <span class="mode-toggle-icon" id="mode-toggle-icon">🔓</span>
+        <span id="mode-toggle-text">無總量限制（預設）</span>
+      </button>
+      <div class="mode-hint" id="mode-hint-off">點擊可切換為「2,500 公噸總量上限」模式</div>
+      <div class="mode-hint mode-hint-on" id="mode-hint-on" style="display:none">總量超過 2,500 公噸時將觸發警告，最佳化也將受限</div>
+    </div>
+
+    <!-- ── Warning Banner ── -->
+    <div class="warning-banner" id="warning-banner" style="display:none" role="alert">
+      <span class="warning-icon">⚠️</span>
+      <div class="warning-text">
+        <strong>超過 2,500 公噸總量限制！</strong>
+        <span id="warning-detail">目前協議總量超出上限</span>
+      </div>
+      <div class="warning-bar-wrap">
+        <div class="warning-bar-fill" id="warning-bar-fill"></div>
+        <span class="warning-bar-label" id="warning-bar-label"></span>
+      </div>
+    </div>
+
     <!-- Main Grid -->
     <div class="main-grid">
 
@@ -334,8 +358,8 @@
     <!-- Optimization Panel -->
     <div class="optimization-section" id="optimization-section" style="display:none;">
       <div class="opt-header">
-        <h2>⚡ 最佳化模擬結果</h2>
-        <p>系統已透過窮舉法，在所有合法區間搜尋最大化各方淨現值總和的組合</p>
+        <h2>⚡ 最佳化模擬結果 <span class="opt-mode-tag" id="opt-mode-tag"></span></h2>
+        <p id="opt-mode-desc">系統已透過窮舉法，在所有合法區間搜尋最大化各方淨現值總和的組合</p>
       </div>
       <div class="opt-grid">
         <div class="opt-result-panel">

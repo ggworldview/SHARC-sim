@@ -17,6 +17,10 @@ const GROUPS = {
 
 const TOTAL_CURRENT  = 5000;
 const FUTURE_TARGET  = 2500;
+const TOTAL_LIMIT    = 2500;  // 總量上限模式的最高允許值
+
+// ── 模式狀態 ─────────────────────────────────────────────────────
+let limitMode = false;  // false = 無限制, true = 2500 公噸總量上限
 
 // ── 核心計算函數 ───────────────────────────────────────────────
 
@@ -69,9 +73,39 @@ function updateUI() {
   document.getElementById('future-catch-display').textContent = fmtTons(future);
   document.getElementById('total-npv-display').textContent = fmtNPV(total);
 
-  // Status colour if total catch exceeds current (should not happen, just guard)
+  // Highlight total-catch red in limit mode if exceeded
+  const tcEl = document.getElementById('total-catch-display');
+  if (limitMode && totalCatch > TOTAL_LIMIT) {
+    tcEl.style.color = '#f87171';
+  } else if (limitMode) {
+    tcEl.style.color = '#34d399';
+  } else {
+    tcEl.style.color = '';
+  }
+
+  // Future catch colour
   const fcEl = document.getElementById('future-catch-display');
   fcEl.style.color = future >= FUTURE_TARGET ? '#34d399' : '#fbbf24';
+
+  // ── Warning banner (limit mode only) ────────────────────────
+  const banner = document.getElementById('warning-banner');
+  if (limitMode && totalCatch > TOTAL_LIMIT) {
+    const excess = totalCatch - TOTAL_LIMIT;
+    // percent of TOTAL_LIMIT exceeded (caps at 100%)
+    const pct = Math.min(100, (totalCatch / TOTAL_LIMIT) * 100);
+    document.getElementById('warning-detail').textContent =
+      `目前協議總量 ${fmtTons(totalCatch)}，超出上限 ${fmtTons(excess)}`;
+    document.getElementById('warning-bar-fill').style.width = pct + '%';
+    document.getElementById('warning-bar-label').textContent =
+      `${totalCatch.toLocaleString('zh-TW')} / 2,500 公噸`;
+    banner.style.display = 'flex';
+    // Re-trigger slide-in animation
+    banner.style.animation = 'none';
+    void banner.offsetWidth;
+    banner.style.animation = '';
+  } else {
+    banner.style.display = 'none';
+  }
 
   // Individual NPV & progress bars
   for (const key of ['lc', 'sc', 'rc', 'rt']) {
@@ -174,6 +208,32 @@ function resetToDefault() {
   }
   updateUI();
   document.getElementById('optimization-section').style.display = 'none';
+}
+
+// ── 切換總量限制模式 ─────────────────────────────────────────────
+function toggleLimitMode() {
+  limitMode = !limitMode;
+  const btn      = document.getElementById('btn-mode-toggle');
+  const icon     = document.getElementById('mode-toggle-icon');
+  const text     = document.getElementById('mode-toggle-text');
+  const hintOff  = document.getElementById('mode-hint-off');
+  const hintOn   = document.getElementById('mode-hint-on');
+
+  if (limitMode) {
+    btn.classList.add('active');
+    icon.textContent = '🔒';
+    text.textContent = '2,500 公噸總量上限（已啟用）';
+    hintOff.style.display = 'none';
+    hintOn.style.display  = '';
+  } else {
+    btn.classList.remove('active');
+    icon.textContent = '🔓';
+    text.textContent = '無總量限制（預設）';
+    hintOff.style.display = '';
+    hintOn.style.display  = 'none';
+    document.getElementById('warning-banner').style.display = 'none';
+  }
+  updateUI();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -349,6 +409,9 @@ function runOptimization() {
   btn.textContent = '⏳ 計算中…';
   btn.disabled = true;
 
+  // Snapshot the mode at time of run
+  const runningInLimitMode = limitMode;
+
   // Defer to next tick so UI can update
   setTimeout(() => {
     const STEP = 50; // 步長
@@ -364,6 +427,8 @@ function runOptimization() {
       for (const sc of scRange) {
         for (const rc of rcRange) {
           for (const rt of rtRange) {
+            // ── 總量限制篩選 ──────────────────────────────
+            if (runningInLimitMode && (lc + sc + rc + rt) > TOTAL_LIMIT) continue;
             const catches = { lc, sc, rc, rt };
             const { total } = calcAll(catches);
             if (total > bestTotal) {
@@ -376,7 +441,7 @@ function runOptimization() {
     }
 
     optimalSolution = best;
-    displayOptimization(best);
+    displayOptimization(best, runningInLimitMode);
 
     btn.textContent = '⚡ 尋找最佳解';
     btn.disabled = false;
@@ -390,13 +455,27 @@ function range(min, max, step) {
   return arr;
 }
 
-function displayOptimization(sol) {
+function displayOptimization(sol, wasLimitMode) {
   const sec = document.getElementById('optimization-section');
   sec.style.display = 'block';
   sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  // Update mode tag in header
+  const tag = document.getElementById('opt-mode-tag');
+  const desc = document.getElementById('opt-mode-desc');
+  if (wasLimitMode) {
+    tag.textContent = '🔒 2,500 公噸總量上限模式';
+    tag.className = 'opt-mode-tag';
+    desc.textContent = '系統已在總捕撈量 ≤ 2,500 公噸的限制下，搜尋最大化各方淨現值總和的組合';
+  } else {
+    tag.textContent = '🔓 無總量限制模式';
+    tag.className = 'opt-mode-tag free';
+    desc.textContent = '系統已透過窮舉法，在所有合法區間搜尋最大化各方淨現值總和的組合';
+  }
+
   const content = document.getElementById('opt-results-content');
   const keys = ['lc', 'sc', 'rc', 'rt'];
+  const optTotal = sol.catches.lc + sol.catches.sc + sol.catches.rc + sol.catches.rt;
   let html = '';
   for (const key of keys) {
     const g = GROUPS[key];
@@ -411,9 +490,12 @@ function displayOptimization(sol) {
   }
 
   const futureCatch = sol.future;
+  const limitNote = wasLimitMode
+    ? `<span style="font-size:0.72rem;color:#fb923c;margin-left:6px">（協議總量: ${fmtTons(optTotal)}）</span>`
+    : '';
   html += `
     <div class="opt-result-item" style="grid-column:1/-1;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.2)">
-      <div class="opt-result-label" style="color:#38bdf8">未來捕撈量（計算所得）</div>
+      <div class="opt-result-label" style="color:#38bdf8">未來捕撈量（計算所得）${limitNote}</div>
       <div class="opt-result-catch" style="color:#38bdf8;font-size:1rem">${fmtTons(futureCatch)}</div>
     </div>
     <div class="opt-total">
