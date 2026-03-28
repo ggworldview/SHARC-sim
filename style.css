@@ -344,6 +344,7 @@ body {
 }
 .slider {
   -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   height: 6px;
   border-radius: 3px;
@@ -433,7 +434,7 @@ body {
 .rc-color { color: var(--rc-color); }
 .rt-color { color: var(--rt-color); }
 
-.constraint-bar { }
+/* .constraint-bar — layout handled by children */
 .constraint-info {
   display: flex;
   gap: 8px;
@@ -742,3 +743,117 @@ body {
 ::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 4px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ==========================================
+   RWD — 平板 (≤ 900px)
+   ========================================== */
+@media (max-width: 900px) {
+  .app-container { padding: 16px 16px 48px; }
+
+  /* Header */
+  .header { padding: 20px 22px; }
+  .header-text h1 { font-size: 1.35rem; }
+  .header-text p  { font-size: 0.8rem; }
+  .header-icon    { font-size: 38px; }
+  .header-badge   { padding: 6px 12px; font-size: 0.78rem; }
+
+  /* Status bar — 2×3 wrap grid */
+  .status-bar { padding: 12px 16px; gap: 4px; }
+  .status-item { min-width: calc(33% - 8px); padding: 6px 8px; }
+  .status-value { font-size: 0.95rem; }
+  .status-divider { display: none; }
+
+  /* Panels */
+  .panel { padding: 20px; }
+
+  /* Summary: 2×2 */
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Opt grid already has 800px breakpoint → keep */
+}
+
+/* ==========================================
+   RWD — 手機 (≤ 600px)
+   ========================================== */
+@media (max-width: 600px) {
+  .app-container { padding: 12px 12px 40px; }
+
+  /* ── Header ── */
+  .header { padding: 16px 16px; border-radius: var(--radius-lg); }
+  .header-content { flex-wrap: wrap; gap: 12px; }
+  .header-icon { font-size: 32px; }
+  .header-text h1 { font-size: 1.1rem; letter-spacing: -0.3px; }
+  .header-text p  { font-size: 0.72rem; }
+  .header-badge { margin-left: 0; font-size: 0.72rem; padding: 5px 10px; }
+
+  /* ── Status bar: 2 per row ── */
+  .status-bar { padding: 10px 12px; border-radius: var(--radius-md); }
+  .status-item { min-width: calc(50% - 8px); padding: 6px 6px; }
+  .status-label { font-size: 0.62rem; }
+  .status-value { font-size: 0.88rem; }
+
+  /* ── Main grid ── */
+  .main-grid { gap: 12px; margin-bottom: 16px; }
+  .panel { padding: 14px; border-radius: var(--radius-lg); }
+
+  /* ── Group cards ── */
+  .group-card { padding: 14px 14px; margin-bottom: 10px; border-radius: var(--radius-md); }
+  .card-header { gap: 10px; margin-bottom: 12px; }
+  .card-icon { width: 36px; height: 36px; font-size: 0.76rem; border-radius: 9px; }
+  .card-title h3 { font-size: 0.82rem; }
+  .card-subtitle { display: none; }          /* hide English subtitle to save space */
+  .coeff-value { font-size: 0.95rem; }
+
+  /* ── Input row: stack vertically on very narrow ── */
+  .input-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .npv-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: unset;
+    background: rgba(255,255,255,0.04);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+  }
+  .npv-label { margin-bottom: 0; }
+  .npv-value { font-size: 1rem; }
+
+  /* ── Slider thumb larger for touch ── */
+  .slider { height: 8px; }
+  .slider::-webkit-slider-thumb { width: 24px; height: 24px; }
+  .slider::-moz-range-thumb    { width: 24px; height: 24px; }
+
+  /* ── Number input ── */
+  .number-input { width: 70px; font-size: 0.95rem; }
+
+  /* ── Quick actions: stack ── */
+  .quick-actions { flex-direction: column; gap: 8px; }
+  .action-btn { padding: 14px 16px; font-size: 0.9rem; }
+
+  /* ── Summary grid: 2×2 ── */
+  .summary-section { margin-bottom: 16px; }
+  .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+  .summary-card { padding: 12px 8px; border-radius: var(--radius-sm); }
+  .summary-abbr { font-size: 0.95rem; }
+  .summary-npv  { font-size: 0.8rem; }
+  .summary-catch { font-size: 0.65rem; }
+
+  /* ── Charts: pie side-by-side → stack ── */
+  .chart-dual { flex-direction: column; }
+  .chart-section { margin-bottom: 16px; }
+  .chart-wrap { padding: 10px; }
+  .section-title { font-size: 0.9rem; }
+
+  /* ── Optimization ── */
+  .optimization-section { padding: 16px; border-radius: var(--radius-lg); }
+  .opt-header h2 { font-size: 1.05rem; }
+  .opt-results { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .opt-result-item { padding: 10px; }
+  .opt-result-catch { font-size: 0.8rem; }
+  .opt-total-value  { font-size: 1rem; }
+  .pareto-section { padding: 14px; }
+  .pareto-section h3 { font-size: 0.85rem; }
+
+  /* ── Footer ── */
+  .footer { font-size: 0.7rem; padding: 16px; }
+}
